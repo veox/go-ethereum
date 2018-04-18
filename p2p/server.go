@@ -39,9 +39,9 @@ const (
 	defaultDialTimeout = 15 * time.Second
 
 	// Connectivity defaults.
-	maxActiveDialTasks     = 5
-	defaultMaxPendingPeers = 10
-	defaultDialRatio       = 2
+	maxActiveDialTasks     = 16
+	defaultMaxPendingPeers = 50
+	defaultDialRatio       = 5
 
 	// Maximum time allowed for reading a complete message.
 	// This is effectively the amount of time a connection can be idle.
