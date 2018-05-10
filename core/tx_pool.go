@@ -907,6 +907,7 @@ func (pool *TxPool) removeTx(hash common.Hash, outofbound bool) {
 // future queue to the set of pending transactions. During this process, all
 // invalidated transactions (low nonce, low balance) are deleted.
 func (pool *TxPool) promoteExecutables(accounts []common.Address) {
+	log.Debug("XXX starting pEx run", "accountslen", len(accounts))
 	// Gather all the accounts potentially needing updates
 	if accounts == nil {
 		accounts = make([]common.Address, 0, len(pool.queue))
@@ -1094,6 +1095,7 @@ func (pool *TxPool) promoteExecutables(accounts []common.Address) {
 		}
 		log.Debug("XXX final drop", "loopitercount", loopitercount)
 	}
+	log.Debug("XXX pEx run complete")
 }
 
 // demoteUnexecutables removes invalid and processed transactions from the pools
