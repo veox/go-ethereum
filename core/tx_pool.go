@@ -957,23 +957,33 @@ func (pool *TxPool) promoteExecutables(accounts []common.Address) {
 			delete(pool.queue, addr)
 		}
 	}
+
 	// If the pending limit is overflown, start equalizing allowances
 	pending := uint64(0)
+	loopitercount := uint64(0)
 	for _, list := range pool.pending {
 		pending += uint64(list.Len())
+		loopitercount += 1
 	}
+	log.Debug("XXX pending count estabilishing", "loopitercount", loopitercount)
+
 	if pending > pool.config.GlobalSlots {
 		pendingBeforeCap := pending
 		// Assemble a spam order to penalize large transactors first
 		spammers := prque.New()
+		loopitercount = 0
 		for addr, list := range pool.pending {
 			// Only evict transactions from high rollers
 			if !pool.locals.contains(addr) && uint64(list.Len()) > pool.config.AccountSlots {
 				spammers.Push(addr, float32(list.Len()))
+				loopitercount += 1
 			}
 		}
+		log.Debug("XXX spammers pushed (Len() called twice in each iter!)", "loopitercount", loopitercount)
+
 		// Gradually drop transactions from offenders
 		offenders := []common.Address{}
+		loopitercount = 0
 		for pending > pool.config.GlobalSlots && !spammers.Empty() {
 			// Retrieve the next offender if not local address
 			offender, _ := spammers.Pop()
@@ -983,12 +993,14 @@ func (pool *TxPool) promoteExecutables(accounts []common.Address) {
 			if len(offenders) > 1 {
 				// Calculate the equalization threshold for all current offenders
 				threshold := pool.pending[offender.(common.Address)].Len()
+				loopitercount += 1
 
 				// Iteratively reduce all offenders until below limit or threshold reached
 				for pending > pool.config.GlobalSlots && pool.pending[offenders[len(offenders)-2]].Len() > threshold {
 					for i := 0; i < len(offenders)-1; i++ {
 						list := pool.pending[offenders[i]]
 						for _, tx := range list.Cap(list.Len() - 1) {
+							loopitercount += 1
 							// Drop the transaction from the global pools too
 							hash := tx.Hash()
 							delete(pool.all, hash)
@@ -1005,12 +1017,17 @@ func (pool *TxPool) promoteExecutables(accounts []common.Address) {
 				}
 			}
 		}
+		log.Debug("XXX offender txs dropped", "loopitercount", loopitercount)
+
 		// If still above threshold, reduce to limit or min allowance
 		if pending > pool.config.GlobalSlots && len(offenders) > 0 {
+			loopitercount = 0
 			for pending > pool.config.GlobalSlots && uint64(pool.pending[offenders[len(offenders)-1]].Len()) > pool.config.AccountSlots {
+				loopitercount += 1
 				for _, addr := range offenders {
 					list := pool.pending[addr]
 					for _, tx := range list.Cap(list.Len() - 1) {
+						loopitercount += 1
 						// Drop the transaction from the global pools too
 						hash := tx.Hash()
 						delete(pool.all, hash)
@@ -1025,14 +1042,20 @@ func (pool *TxPool) promoteExecutables(accounts []common.Address) {
 					pending--
 				}
 			}
+			log.Debug("XXX still above threshold", "loopitercount", loopitercount)
 		}
 		pendingRateLimitCounter.Inc(int64(pendingBeforeCap - pending))
 	}
+
 	// If we've queued more transactions than the hard limit, drop oldest ones
 	queued := uint64(0)
+	loopitercount = 0
 	for _, list := range pool.queue {
 		queued += uint64(list.Len())
+		loopitercount += 1
 	}
+	log.Debug("XXX counting still-queued", "loopitercount", loopitercount)
+
 	if queued > pool.config.GlobalQueue {
 		// Sort all accounts with queued transactions by heartbeat
 		addresses := make(addresssByHeartbeat, 0, len(pool.queue))
@@ -1044,6 +1067,7 @@ func (pool *TxPool) promoteExecutables(accounts []common.Address) {
 		sort.Sort(addresses)
 
 		// Drop transactions until the total is below the limit or only locals remain
+		loopitercount = 0
 		for drop := queued - pool.config.GlobalQueue; drop > 0 && len(addresses) > 0; {
 			addr := addresses[len(addresses)-1]
 			list := pool.queue[addr.address]
@@ -1052,6 +1076,7 @@ func (pool *TxPool) promoteExecutables(accounts []common.Address) {
 
 			// Drop all transactions if they are less than the overflow
 			if size := uint64(list.Len()); size <= drop {
+				loopitercount += 1
 				for _, tx := range list.Flatten() {
 					pool.removeTx(tx.Hash(), true)
 				}
@@ -1067,6 +1092,7 @@ func (pool *TxPool) promoteExecutables(accounts []common.Address) {
 				queuedRateLimitCounter.Inc(1)
 			}
 		}
+		log.Debug("XXX final drop", "loopitercount", loopitercount)
 	}
 }
 
