@@ -426,6 +426,7 @@ func (pool *TxPool) reset(oldHead, newHead *types.Header) {
 	}
 	// Check the queue and move transactions over to the pending if possible
 	// or remove those that have become invalid
+	log.Debug("XXX txPool reset callin pEx")
 	pool.promoteExecutables(nil)
 }
 
@@ -791,6 +792,7 @@ func (pool *TxPool) addTx(tx *types.Transaction, local bool) error {
 	// If we added a new transaction, run promotion checks and return
 	if !replace {
 		from, _ := types.Sender(pool.signer, tx) // already validated
+		log.Debug("XXX txPool addTx callin pEx")
 		pool.promoteExecutables([]common.Address{from})
 	}
 	return nil
@@ -801,6 +803,7 @@ func (pool *TxPool) addTxs(txs []*types.Transaction, local bool) []error {
 	pool.mu.Lock()
 	defer pool.mu.Unlock()
 
+	log.Debug("XXX txPool addTxs callin addTxsLocked")
 	return pool.addTxsLocked(txs, local)
 }
 
@@ -826,6 +829,7 @@ func (pool *TxPool) addTxsLocked(txs []*types.Transaction, local bool) []error {
 		for addr := range dirty {
 			addrs = append(addrs, addr)
 		}
+		log.Debug("XXX txPool addTxsLocked callin pEx")
 		pool.promoteExecutables(addrs)
 	}
 	return errs
@@ -966,7 +970,7 @@ func (pool *TxPool) promoteExecutables(accounts []common.Address) {
 		pending += uint64(list.Len())
 		loopitercount += 1
 	}
-	log.Debug("XXX pending count estabilishing", "loopitercount", loopitercount)
+	log.Debug("XXX pending count estabilished", "loopitercount", loopitercount)
 
 	if pending > pool.config.GlobalSlots {
 		pendingBeforeCap := pending
